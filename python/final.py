@@ -17,7 +17,7 @@ for key in cleanData.keys():
     df.index=df.iloc[:,0]
     df.index.name='date'
     df.drop(df.columns[0], axis=1, inplace=True)
-    
+  njbjkb  
 
 
 
