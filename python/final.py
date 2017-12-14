@@ -6,7 +6,7 @@ import os
 
 
 
-data=pickle.load(open('../data/market_data.p', 'rb'))
+#data=pickle.load(open('../data/market_data.p', 'rb'))
 
 cleanData = {fname[:-4]: pd.read_csv('../data/CleanedData/' + fname) for fname in os.listdir('../data/CleanedData')}
 del cleanData['.DS_S']
