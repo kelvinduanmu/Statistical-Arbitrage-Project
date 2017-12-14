@@ -14,10 +14,12 @@ del cleanData['.DS_S']
 
 for key in cleanData.keys():
     df=cleanData[key]
-    df.index=df.iloc[:,0]
+    df.index=pd.PeriodIndex(df.iloc[:,0], freq='D')
     df.index.name='date'
     df.drop(df.columns[0], axis=1, inplace=True)
     
+
+
 
 
 
