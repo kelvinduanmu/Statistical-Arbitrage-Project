@@ -13,9 +13,19 @@ del cleanData['.DS_S']
 
 
 for key in cleanData.keys():
-    cleanData[key].index=cleanData[key].iloc[:,0]
-    cleanData[key].index.name='date'
-    cleanData[key].drop(0, axis=1)
+    df=cleanData[key]
+    df.index=df.iloc[:,0]
+    df.index.name='date'
+    df.drop(df.columns[0], axis=1, inplace=True)
+    
+
+
+
+
+
+
+
+
 
 
 
