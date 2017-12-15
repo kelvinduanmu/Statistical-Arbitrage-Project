@@ -73,7 +73,7 @@ def factor_mimicking_portfolio_cvx(data, exp_factor, neu_factors, covariance, da
     return holdings, success
 
 
-def combine_factors_portfolio_cvx(data, factor_premia, covariance, H_mat, trans_cost_mult, date):
+def combine_factors_portfolio_cvx(data, factor_premia, covariance, H_mat, trans_cost_mult, gamma, date):
 
     betas=data['beta'].loc[date, H_mat.index]
 
@@ -82,7 +82,7 @@ def combine_factors_portfolio_cvx(data, factor_premia, covariance, H_mat, trans_
     n = covariance.shape[1]
     
     # objective function xT P x + qT x
-    P = matrix((H_mat.T.dot((0.5*covariance+trans_cost_mult*np.eye(n)).dot(H_mat))).values)
+    P = matrix((H_mat.T.dot((gamma*covariance+trans_cost_mult*np.eye(n)).dot(H_mat))).values)
     q = matrix(-factor_premia.reshape(-1,1))
 
     # and subject to Ax = b
@@ -151,4 +151,5 @@ holdings2, _ = factor_mimicking_portfolio_cvx(cleanData, 'mom', ['MKshare', 'B2P
 H_mat = pd.DataFrame({'BAB': holdings1, 'MOM': holdings2}).fillna(0)
 factor_premia = np.array([0.003, 0.004])
 trans_cost_mult = 0.002
-weights, _ = combine_factors_portfolio_cvx(cleanData, factor_premia, V, H_mat, trans_cost_mult, startDate)
+gamma=0.5
+weights, _ = combine_factors_portfolio_cvx(cleanData, factor_premia, V, H_mat, trans_cost_mult, gamma, startDate)
