@@ -8,7 +8,7 @@ from cvxopt import matrix, solvers
 solvers.options['show_progress'] = False
 
 
-def factor_mimicking_portfolio_cvx(data, exp_factor, neu_factors, covariance, date, cutoff=0.3):
+def factor_mimicking_portfolio_cvx(data, exp_factor, neu_factors, covariance, date, cutoff=0.1):
     cutoffs = np.array([cutoff, 1 - cutoff]) * 100
 
     # focus on ones we care, others are zeors
@@ -22,11 +22,13 @@ def factor_mimicking_portfolio_cvx(data, exp_factor, neu_factors, covariance, da
         bs[i, ] = b
         touse = touse.difference(b.index[b.isnull()])
 
+    touse=touse.intersection(covariance.index)
+
     V = covariance[touse].loc[touse]
     a = a[touse]
     price_vec = data['PX.Weekly'].loc[date, touse]
 
-    bs = pd.DataFrame(bs, columns=covariance.index)
+    bs = pd.DataFrame(bs, columns=data[exp_factor].columns)
     bs = bs[touse]
 
     lower, upper = np.percentile(a[touse], cutoffs)
@@ -75,9 +77,11 @@ def factor_mimicking_portfolio_cvx(data, exp_factor, neu_factors, covariance, da
 
 
 def factor_premium(data, startDate, holding):
-    ret=data['stock.ret'].loc[startDate-2*52:startDate,holding.index]
-    avg_ret = (holding*ret).mean()
-    return avg_ret
+    ret=data['stock.ret'].loc[(pd.Period(startDate, freq='D')-2*365):startDate,holding.index]
+    return (holding*ret).sum(axis=1).mean()
+    
+
+
 
 def combine_factors_portfolio_cvx(data, factor_premia, covariance, H_mat, trans_cost_mult, gamma, date):
 
@@ -140,10 +144,11 @@ def data_preparation():
 
     return cleanData
 
-def strategy_simulation(cleanData, startDate, holdingPeriod=12)
+def strategy_simulation(cleanData, startDate, holdingPeriod=12):
 
     curr_ret_data = cleanData['stock.ret'][:startDate]
     curr_ret_data = curr_ret_data.dropna(how='all')
+    curr_ret_data=curr_ret_data.drop(columns=curr_ret_data.loc[:,curr_ret_data.isnull().any()].columns)
     V = np.cov(curr_ret_data.transpose())
     V = pd.DataFrame(V, index=curr_ret_data.columns, columns=curr_ret_data.columns)
 
@@ -151,18 +156,36 @@ def strategy_simulation(cleanData, startDate, holdingPeriod=12)
     holdings2, _ = factor_mimicking_portfolio_cvx(cleanData, 'mom', ['MKshare', 'B2P', 'beta'], V, startDate, 0.1)
 
     H_mat = pd.DataFrame({'BAB': holdings1, 'MOM': holdings2}).fillna(0)
-    factor_premia = np.array([0.003, 0.004])
-    trans_cost_mult = 0.002
+    factor_premia = np.array([factor_premium(cleanData, startDate, holding) for holding in [holdings1, holdings2]])
+    trans_cost_mult = 0.02
     gamma=0.5
     weights, _ = combine_factors_portfolio_cvx(cleanData, factor_premia, V, H_mat, trans_cost_mult, gamma, startDate)
 
+    holding_overall=H_mat.dot(weights)
+
+    holdingPX=cleanData['PX.Weekly'][startDate:].head(12)
+    PnL=(holding_overall*holdingPX[holding_overall.index]).sum(axis=1)
+
+    transc=(holding_overall**2).sum()*trans_cost_mult
+
+
+    return PnL[-1]-transc
 
 
 
 cleanData=data_preparation()
 startDate = '2005-01-07'
+dates=cleanData['stock.ret'].loc[startDate:].index
+PnL=strategy_simulation(cleanData, dates[200])
 
-strategy_simulation
+
+performance=pd.DataFrame({'PnL':[np.nan]}, index=dates)
+for i in range(len(dates)):
+    try:
+        performance.loc[dates[i]]=strategy_simulation(cleanData, dates[i])
+    except:
+        pass
+
 
 
 
