@@ -39,11 +39,6 @@ def factor_mimicking_portfolio_cvx(data, exp_factor, neu_factors, covariance, da
 
     n=touse.sum()
 
-    
-
-
-
-
     # objective function xT P x + qT x
     P = matrix(V[touse].loc[:,touse].values*52**2)
     price_vec = price_vec[touse]
@@ -138,8 +133,6 @@ for key in cleanData.keys():
         cleanData[key]=-(df-df.mean())/df.std()
     if key == 'mom':
         cleanData[key]=(df-df.mean())/df.std()
-
-
 
 
 
