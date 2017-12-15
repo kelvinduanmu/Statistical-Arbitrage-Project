@@ -64,6 +64,38 @@ def factor_mimicking_portfolio_cvx(data, exp_factor, neu_factors, covariance, da
     return success, holdings
 
 
+def combine_factors_portfolio_cvx(betas, factor_premia, covariance, H_mat, trans_cost_mult):
+    
+    n = covariance.shape[1]
+    # objective function xT P x + qT x
+    P = matrix((((H_mat).T).dot(matrix(0.5*covariance.values + \
+                trans_cost_mult*np.eye(n)))).dot(H_mat))
+    q=-1*(matrix(factor_premia).T)
+
+    # and subject to Ax = b
+    A = matrix(betas).T # beta neutral
+
+    b = matrix(np.zeros(1))
+
+    # G x <= h
+    G = matrix(np.zeros((1,n)))
+
+    h = matrix(np.ones(1))
+
+    
+    success = False
+    holdings = None
+    import pdb; pdb.set_trace()
+    try:
+        sol = solvers.qp(P, q, G, h, A, b)
+
+        x = np.array(sol['x']).flatten()
+        success = sol['status'] == 'optimal'
+        if success:
+            holdings = x
+    except:
+        print('cvx didn''t find solution')
+    return success, holdings
 
 
 
@@ -102,10 +134,7 @@ V=np.cov(curr_ret_data.transpose())
 V=pd.DataFrame(V, index=curr_ret_data.columns, columns=curr_ret_data.columns)
 
 
-
-
 success, holdings = factor_mimicking_portfolio_cvx(cleanData, 'beta', ['MKshare', 'B2P'], V, startDate)
-
 
 
 
