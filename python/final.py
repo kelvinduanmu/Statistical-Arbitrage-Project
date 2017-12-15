@@ -32,22 +32,23 @@ def factor_mimicking_portfolio_cvx(data, exp_factor, neu_factors, covariance, da
 
     # objective function xT P x + qT x
     P = matrix(covariance[touse].loc[touse].values)
-
+    price_vec = cleanData['PX.Weekly'].loc[date,touse]
     q=matrix(np.zeros(n))
 
     # and subject to Ax = b
     A = np.stack((a[touse].values,     # unit exposure to factor
-                            np.ones(n))) # dollar neutral
+                            price_vec.values)) # dollar neutral
 
     A=matrix(np.array(np.vstack((A, bs[touse].values)),dtype=float))  # exposure to factor b1, b2
 
     b = matrix([1.0, 0.0]+[0]*k)
 
     # G x <= h
-    G = matrix(np.ones((1,n)))
+    G = matrix(np.zeros((1,n)))
 
     h = matrix(np.ones(1))
 
+    
     success = False
     holdings = None
     import pdb; pdb.set_trace()
@@ -79,7 +80,10 @@ for key in cleanData.keys():
     df.index=pd.PeriodIndex(df.iloc[:,0], freq='D')
     df.index.name='date'
     df.drop(df.columns[0], axis=1, inplace=True)
-    df[df=='NA']=np.nan
+    try:
+        df[df=='NA']=np.nan
+    except:
+        pass
     if key in ['beta', 'MKshare']:
         cleanData[key]=(df-df.mean())/df.std()
 
