@@ -74,6 +74,11 @@ def factor_mimicking_portfolio_cvx(data, exp_factor, neu_factors, covariance, da
     return holdings, success
 
 
+def factor_premium(data, startDate, holding):
+    ret=data['stock.ret'].loc[startDate-2*52:startDate,holding.index]
+    avg_ret = (holding*ret).mean()
+    return avg_ret
+
 def combine_factors_portfolio_cvx(data, factor_premia, covariance, H_mat, trans_cost_mult, gamma, date):
 
     betas=data['beta'].loc[date, H_mat.index]
