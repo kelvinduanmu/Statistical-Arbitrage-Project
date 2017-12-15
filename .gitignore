@@ -7,3 +7,7 @@ stock.ret.csv
 market_data.p
 B2P.csv
 MKshare.csv
+mom.csv
+R/.RData
+R/.Rhistory
+R/Final_Project.Rmd

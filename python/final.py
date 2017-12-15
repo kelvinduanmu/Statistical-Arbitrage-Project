@@ -6,7 +6,7 @@ from cvxopt import matrix, solvers
 
 
 
-solvers.options['show_progress'] = False
+# solvers.options['show_progress'] = False
 
 
 def factor_mimicking_portfolio_cvx(data, exp_factor, neu_factors, covariance, date, cutoff=0.3):
@@ -26,6 +26,7 @@ def factor_mimicking_portfolio_cvx(data, exp_factor, neu_factors, covariance, da
 
     V=covariance[touse].loc[touse]
     a=a[touse]
+    price_vec = data['PX.Weekly'].loc[date,touse]
 
     bs=pd.DataFrame(bs, columns=covariance.index)
     bs=bs[touse]
@@ -44,29 +45,29 @@ def factor_mimicking_portfolio_cvx(data, exp_factor, neu_factors, covariance, da
 
 
     # objective function xT P x + qT x
-    P = matrix(V[touse].loc[:,touse].values)
-
+    P = matrix(V[touse].loc[:,touse].values*52**2)
+    price_vec = price_vec[touse]
     q=matrix(np.zeros(n))
 
     # and subject to Ax = b
     
     A = np.stack((a[touse].values,     # unit exposure to factor
-                            np.ones(n))) # dollar neutral # need changes
+                            price_vec.values)) # dollar neutral
     
     A=matrix(np.array(np.vstack((A, bs.loc[:,touse].values)),dtype=float))  # exposure to factor b1, b2
-
-
+                            
     b = matrix([1.0, 0.0]+[0]*k)
 
     # G x <= h
     G=pd.DataFrame(np.eye(n),columns=touse[touse].index, index=touse[touse].index)
 
-    G.loc[short,short]=np.eye(short.sum())*-1
+    G.loc[long,long]=np.eye(long.sum())*-1
 
     G = matrix(G.values)
 
     h = matrix(np.zeros(n))
 
+    
     success = False
     holdings = None
     try:
@@ -75,10 +76,10 @@ def factor_mimicking_portfolio_cvx(data, exp_factor, neu_factors, covariance, da
         x = np.array(sol['x']).flatten()
         success = sol['status'] == 'optimal'
         if success:
-            holdings = pd.Series(x, index=a.index)
+            holdings = pd.Series(x, index=touse[touse].index)
     except:
         print('cvx didn''t find solution')
-    return success, holdings
+    return holdings, success
 
 
 
@@ -97,9 +98,14 @@ for key in cleanData.keys():
     df.index=pd.PeriodIndex(df.iloc[:,0], freq='D')
     df.index.name='date'
     df.drop(df.columns[0], axis=1, inplace=True)
-    df[df=='NA']=np.nan
+    try:
+        df[df=='NA']=np.nan
+    except:
+        pass
     if key in ['beta', 'MKshare']:
         cleanData[key]=-(df-df.mean())/df.std()
+    if key == 'mom':
+        cleanData[key]=(df-df.mean())/df.std()
 
 
 
@@ -120,7 +126,8 @@ V=pd.DataFrame(V, index=curr_ret_data.columns, columns=curr_ret_data.columns)
 
 
 
-success, holdings = factor_mimicking_portfolio_cvx(cleanData, 'beta', ['MKshare', 'B2P'], V, startDate, 0.1)
+holdings1, _ = factor_mimicking_portfolio_cvx(cleanData, 'beta', ['MKshare', 'B2P', 'mom'], V, startDate, 0.1)
+holdings2, _ = factor_mimicking_portfolio_cvx(cleanData, 'mom', ['MKshare', 'B2P'], V, startDate, 0.1)
 
 
 
