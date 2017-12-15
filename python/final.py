@@ -6,11 +6,12 @@ from cvxopt import matrix, solvers
 
 
 
-solvers.options['show_progress'] = False
+# solvers.options['show_progress'] = False
 
 
-def factor_mimicking_portfolio_cvx(data, exp_factor, neu_factors, covariance, date):
-
+def factor_mimicking_portfolio_cvx(data, exp_factor, neu_factors, covariance, date, cutoff=0.3):
+    cutoffs = np.array([cutoff, 1 - cutoff]) * 100
+    
     # focus on ones we care, others are zeors
     a=data[exp_factor].loc[date, ]
     touse=a.index[~a.isnull()]
@@ -22,46 +23,63 @@ def factor_mimicking_portfolio_cvx(data, exp_factor, neu_factors, covariance, da
         bs[i,]=b
         touse=touse.difference(b.index[b.isnull()])
     
-    n=len(touse)
+
+    V=covariance[touse].loc[touse]
+    a=a[touse]
+    price_vec = data['PX.Weekly'].loc[date,touse]
+
+    bs=pd.DataFrame(bs, columns=covariance.index)
+    bs=bs[touse]
+
+
+    lower, upper = np.percentile(a[touse], cutoffs)
+    mid = (lower < a[touse]) & (a[touse] < upper)
+    short, long = a[touse] <= lower, a[touse] >= upper
+    touse=short|long
+
+    n=touse.sum()
 
     
 
-    bs=pd.DataFrame(bs, columns=a.index)
 
 
 
     # objective function xT P x + qT x
-    P = matrix(covariance[touse].loc[touse].values)
-    price_vec = cleanData['PX.Weekly'].loc[date,touse]
+    P = matrix(V[touse].loc[:,touse].values*52**2)
+    price_vec = price_vec[touse]
     q=matrix(np.zeros(n))
 
     # and subject to Ax = b
+    
     A = np.stack((a[touse].values,     # unit exposure to factor
                             price_vec.values)) # dollar neutral
-
-    A=matrix(np.array(np.vstack((A, bs[touse].values)),dtype=float))  # exposure to factor b1, b2
-
+    
+    A=matrix(np.array(np.vstack((A, bs.loc[:,touse].values)),dtype=float))  # exposure to factor b1, b2
+                            
     b = matrix([1.0, 0.0]+[0]*k)
 
     # G x <= h
-    G = matrix(np.zeros((1,n)))
+    G=pd.DataFrame(np.eye(n),columns=touse[touse].index, index=touse[touse].index)
 
-    h = matrix(np.ones(1))
+    G.loc[long,long]=np.eye(long.sum())*-1
+
+    G = matrix(G.values)
+
+    h = matrix(np.zeros(n))
 
     
     success = False
     holdings = None
-    import pdb; pdb.set_trace()
     try:
         sol = solvers.qp(P, q, G, h, A, b)
 
         x = np.array(sol['x']).flatten()
         success = sol['status'] == 'optimal'
         if success:
-            holdings = pd.Series(x, index=a.index)
+            holdings = pd.Series(x, index=touse[touse].index)
     except:
         print('cvx didn''t find solution')
-    return success, holdings
+    return holdings, success
 
 
 def combine_factors_portfolio_cvx(betas, factor_premia, covariance, H_mat, trans_cost_mult):
@@ -101,7 +119,7 @@ def combine_factors_portfolio_cvx(betas, factor_premia, covariance, H_mat, trans
 
 
 
-#data=pickle.load(open('../data/market_data.p', 'rb'))
+# data=pickle.load(open('../data/market_data.p', 'rb'))
 
 cleanData = {fname[:-4]: pd.read_csv('../data/CleanedData/' + fname) for fname in os.listdir('../data/CleanedData')}
 del cleanData['.DS_S']
@@ -117,7 +135,10 @@ for key in cleanData.keys():
     except:
         pass
     if key in ['beta', 'MKshare']:
+        cleanData[key]=-(df-df.mean())/df.std()
+    if key == 'mom':
         cleanData[key]=(df-df.mean())/df.std()
+
 
 
 
@@ -129,12 +150,14 @@ formPeriod=12
 startDate='2005-01-07'
 
 curr_ret_data=cleanData['stock.ret'][:startDate]
-curr_ret_data=curr_ret_data[~curr_ret_data.isnull().all(axis=1)]
+curr_ret_data=curr_ret_data.dropna(how='all')
 V=np.cov(curr_ret_data.transpose())
 V=pd.DataFrame(V, index=curr_ret_data.columns, columns=curr_ret_data.columns)
 
 
-success, holdings = factor_mimicking_portfolio_cvx(cleanData, 'beta', ['MKshare', 'B2P'], V, startDate)
+
+holdings1, _ = factor_mimicking_portfolio_cvx(cleanData, 'beta', ['MKshare', 'B2P', 'mom'], V, startDate, 0.1)
+holdings2, _ = factor_mimicking_portfolio_cvx(cleanData, 'mom', ['MKshare', 'B2P'], V, startDate, 0.1)
 
 
 
