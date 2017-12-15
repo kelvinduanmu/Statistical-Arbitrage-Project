@@ -5,7 +5,7 @@ import os
 from cvxopt import matrix, solvers
 
 
-# solvers.options['show_progress'] = False
+solvers.options['show_progress'] = False
 
 
 def factor_mimicking_portfolio_cvx(data, exp_factor, neu_factors, covariance, date, cutoff=0.3):
@@ -76,7 +76,7 @@ def factor_mimicking_portfolio_cvx(data, exp_factor, neu_factors, covariance, da
 
 def combine_factors_portfolio_cvx(data, factor_premia, covariance, H_mat, trans_cost_mult, gamma, date):
 
-    betas=data['beta'].loc[date, H_mat.index]
+    betas=data['beta'].loc[date, H_mat.index].values
 
     covariance = covariance[H_mat.index].loc[H_mat.index]
 
@@ -85,11 +85,6 @@ def combine_factors_portfolio_cvx(data, factor_premia, covariance, H_mat, trans_
     # objective function xT P x + qT x
     P = matrix((H_mat.T.dot((gamma*covariance+trans_cost_mult*np.eye(n)).dot(H_mat))).values)
     q = matrix(-factor_premia.reshape(-1,1))
-
-    # and subject to Ax = b
-    A = matrix(betas.reshape(1,-1).dot(H_mat)) # beta neutral
-
-    b = matrix(np.zeros(1))
 
     # G x <= h
     G = matrix(np.eye(len(factor_premia))*-1)
@@ -110,47 +105,64 @@ def combine_factors_portfolio_cvx(data, factor_premia, covariance, H_mat, trans_
     return holdings, success
 
 
-# data=pickle.load(open('../data/market_data.p', 'rb'))
-
-cleanData = {fname[:-4]: pd.read_csv('../data/CleanedData/' + fname) for fname in os.listdir('../data/CleanedData')}
-del cleanData['.DS_S']
-
-keys=list(cleanData.keys())
-
-for key in keys:
-    df = cleanData[key]
-    df.index = pd.PeriodIndex(df.iloc[:, 0], freq='D')
-    df.index.name = 'date'
-    df.drop(df.columns[0], axis=1, inplace=True)
-    try:
-        df[df == 'NA'] = np.nan
-    except:
-        pass
-    if key in ['beta', 'MKshare']:
-        temp = -(df - df.mean()) / df.std()
-        if key=='beta':
-            cleanData['BAB']=temp
-        else:
-            cleanData[key]=temp
-    if key == 'mom':
-        cleanData[key] = (df - df.mean()) / df.std()
 
 
-formPeriod = 12
+def data_preparation():
+    # data=pickle.load(open('../data/market_data.p', 'rb'))
+
+    cleanData = {fname[:-4]: pd.read_csv('../data/CleanedData/' + fname) for fname in os.listdir('../data/CleanedData')}
+    del cleanData['.DS_S']
+
+    keys=list(cleanData.keys())
+
+    for key in keys:
+        df = cleanData[key]
+        df.index = pd.PeriodIndex(df.iloc[:, 0], freq='D')
+        df.index.name = 'date'
+        df.drop(df.columns[0], axis=1, inplace=True)
+        try:
+            df[df == 'NA'] = np.nan
+        except:
+            pass
+        if key in ['beta', 'MKshare']:
+            temp = -(df - df.mean()) / df.std()
+            if key=='beta':
+                cleanData['BAB']=temp
+            else:
+                cleanData[key]=temp
+        if key == 'mom':
+            cleanData[key] = (df - df.mean()) / df.std()
+
+    return cleanData
+
+def strategy_simulation(cleanData, startDate, holdingPeriod=12)
+
+    curr_ret_data = cleanData['stock.ret'][:startDate]
+    curr_ret_data = curr_ret_data.dropna(how='all')
+    V = np.cov(curr_ret_data.transpose())
+    V = pd.DataFrame(V, index=curr_ret_data.columns, columns=curr_ret_data.columns)
+
+    holdings1, _ = factor_mimicking_portfolio_cvx(cleanData, 'BAB', ['MKshare', 'B2P', 'mom', 'beta'], V, startDate, 0.1)
+    holdings2, _ = factor_mimicking_portfolio_cvx(cleanData, 'mom', ['MKshare', 'B2P', 'beta'], V, startDate, 0.1)
+
+    H_mat = pd.DataFrame({'BAB': holdings1, 'MOM': holdings2}).fillna(0)
+    factor_premia = np.array([0.003, 0.004])
+    trans_cost_mult = 0.002
+    gamma=0.5
+    weights, _ = combine_factors_portfolio_cvx(cleanData, factor_premia, V, H_mat, trans_cost_mult, gamma, startDate)
 
 
+
+
+cleanData=data_preparation()
 startDate = '2005-01-07'
 
-curr_ret_data = cleanData['stock.ret'][:startDate]
-curr_ret_data = curr_ret_data.dropna(how='all')
-V = np.cov(curr_ret_data.transpose())
-V = pd.DataFrame(V, index=curr_ret_data.columns, columns=curr_ret_data.columns)
+strategy_simulation
 
-holdings1, _ = factor_mimicking_portfolio_cvx(cleanData, 'BAB', ['MKshare', 'B2P', 'mom', 'beta'], V, startDate, 0.1)
-holdings2, _ = factor_mimicking_portfolio_cvx(cleanData, 'mom', ['MKshare', 'B2P', 'beta'], V, startDate, 0.1)
 
-H_mat = pd.DataFrame({'BAB': holdings1, 'MOM': holdings2}).fillna(0)
-factor_premia = np.array([0.003, 0.004])
-trans_cost_mult = 0.002
-gamma=0.5
-weights, _ = combine_factors_portfolio_cvx(cleanData, factor_premia, V, H_mat, trans_cost_mult, gamma, startDate)
+
+
+
+
+
+
