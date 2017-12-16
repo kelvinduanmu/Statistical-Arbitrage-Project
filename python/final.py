@@ -5,7 +5,7 @@ import os
 from cvxopt import matrix, solvers
 import sklearn.covariance as skl_cov
 import matplotlib.pyplot as plt
-
+import time
 
 solvers.options['show_progress'] = False
 
@@ -65,7 +65,7 @@ def factor_mimicking_portfolio_cvx(data, exp_factor, neu_factors, covariance, da
     success = False
     holdings = None
 
-    msg = 'Can not solve optimization for ' + exp_factor
+    msg = 'Can not solve optimization for ' + exp_factor + 'at ' + startDate
     try:
         sol = solvers.qp(P, q, G, h, A, b)
 
@@ -182,22 +182,15 @@ startDate = '2005-01-07'
 
 dates=cleanData['stock.ret'].loc[startDate:].index
 dates=dates[:-100]
-performance_means = list()
+performance_means = []
 
 performance=pd.DataFrame({'PnL':[np.nan]}, index=dates)
 
-ind_start = 0
-for g in (np.arange(1, 11)*0.1):
-    for t in (np.arange(1, 11)*0.005):
-        for h in (np.arange(1, 14)*4):
-            for i in range(len(dates)):
-                try:
-                    performance.loc[dates[i]]=strategy_simulation(cleanData, dates[i], h, t, g)
-                    performance_means[ind_start] = performance.mean()
-                except:
-                    pass
-                ind_start = ind_start + 1
-
+time0=time.time()
+for i in range(len(dates)):
+    performance.loc[dates[i]]=strategy_simulation(cleanData, dates[i], 12, 0.02, 0.5)
+    performance_means.append(performance.mean())
+print(time.time()-time0)
 #performance.plot(linestyle='None',marker='o')
 #performance.mean()
 
