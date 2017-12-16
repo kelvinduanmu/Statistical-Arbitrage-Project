@@ -65,7 +65,7 @@ def factor_mimicking_portfolio_cvx(data, exp_factor, neu_factors, covariance, da
     success = False
     holdings = None
 
-    msg = 'Can not solve optimization for ' + exp_factor + 'at ' + startDate
+    msg = 'Can not solve optimization for ' + exp_factor + ' at ' + startDate
     try:
         sol = solvers.qp(P, q, G, h, A, b)
 
@@ -182,15 +182,15 @@ startDate = '2005-01-07'
 
 dates=cleanData['stock.ret'].loc[startDate:].index
 dates=dates[:-100]
-performance_means = []
-
-performance=pd.DataFrame({'PnL':[np.nan]}, index=dates)
+gamma=np.arange(3, 7)*0.1
+gamma_perf=pd.DataFrame(np.ones((len(dates), 4))*np.nan, index=dates, columns=gamma)
 
 time0=time.time()
-for i in range(len(dates)):
-    performance.loc[dates[i]]=strategy_simulation(cleanData, dates[i], 12, 0.02, 0.5)
-    performance_means.append(performance.mean())
-print(time.time()-time0)
+for j in gamma:
+    for i in range(len(dates)):
+        gamma_perf.loc[dates[i], j]=strategy_simulation(cleanData, dates[i], 12, 0.02, j)
+    print('gamma:, ', j, time.time()-time0)
+    time0=time.time()
 #performance.plot(linestyle='None',marker='o')
 #performance.mean()
 
