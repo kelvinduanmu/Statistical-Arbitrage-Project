@@ -155,7 +155,11 @@ def strategy_simulation(cleanData, startDate, holdingPeriod, trans_cost_mult, ga
     curr_ret_data=curr_ret_data.drop(curr_ret_data.loc[:,curr_ret_data.isnull().any()].columns, axis=1)
 
     V = np.cov(curr_ret_data.transpose())
-    V = skl_cov.LedoitWolf(store_precision=False, assume_centered=True).fit(V).covariance_
+    
+    
+    #V = skl_cov.LedoitWolf(store_precision=False, assume_centered=True).fit(V).covariance_
+    
+    
     V = pd.DataFrame(V, index=curr_ret_data.columns, columns=curr_ret_data.columns)
 
     holdings1, _ = factor_mimicking_portfolio_cvx(cleanData, 'BAB', ['MKshare', 'B2P', 'mom', 'beta'], V, startDate, 0.1)
@@ -182,17 +186,18 @@ startDate = '2005-01-07'
 
 dates=cleanData['stock.ret'].loc[startDate:].index
 dates=dates[:-100]
-gamma=np.arange(3, 7)*0.1
-gamma_perf=pd.DataFrame(np.ones((len(dates), 4))*np.nan, index=dates, columns=gamma)
+bigG=10
+gamma=np.arange(1, bigG)*0.1
+gamma_perf=pd.DataFrame(np.ones((len(dates), bigG-1))*np.nan, index=dates, columns=gamma)
 
 time0=time.time()
 for j in gamma:
     for i in range(len(dates)):
-        gamma_perf.loc[dates[i], j]=strategy_simulation(cleanData, dates[i], 12, 0.02, j)
+        gamma_perf.loc[dates[i], j]=strategy_simulation(cleanData, dates[i], 25, 0.02, j)
     print('gamma:, ', j, time.time()-time0)
     time0=time.time()
 #performance.plot(linestyle='None',marker='o')
 #performance.mean()
 
 
-
+gamma_perf.to_csv('temp.csv')
