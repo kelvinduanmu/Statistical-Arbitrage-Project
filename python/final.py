@@ -189,22 +189,26 @@ startDate = '2005-01-07'
 
 dates=cleanData['stock.ret'].loc[startDate:].index
 dates=dates[:-100]
-bigG=10
-gamma=np.arange(1, bigG)*0.1
-gamma_perf=pd.DataFrame(np.ones((len(dates), bigG-1))*np.nan, index=dates, columns=gamma)
+
+startP = 1
+endP=11
+multiP = 0.005
+para=np.arange(startP, endP)*multiP
+para_perf=pd.DataFrame(np.ones((len(dates), endP-startP))*np.nan, index=dates, columns=para)
 
 time0=time.time()
 curr_year=2005
-for j in gamma:
+for j in para:
     for i in range(len(dates)):
-        gamma_perf.loc[dates[i], j]=strategy_simulation(cleanData, dates[i], 12, 0.02, j)
+        para_perf.loc[dates[i], j]=strategy_simulation(cleanData, dates[i], 12, j, 1.2)
         if dates[i].year==curr_year:
             curr_year+=1
             print(curr_year)
-    print('gamma:, ', j, time.time()-time0)
+    print('trans_cost:, ', j, time.time()-time0)
     time0=time.time()
 #performance.plot(linestyle='None',marker='o')
 #performance.mean()
 
 
-gamma_perf.to_csv('temp.csv')
+para_perf.to_csv('temp.csv')
+((para_perf.mean()).values).reshape((1,-1))
