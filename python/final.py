@@ -211,4 +211,4 @@ for j in para:
 
 
 para_perf.to_csv('temp.csv')
-((para_perf.mean()).values).reshape((1,-1))
+print(((para_perf.mean()).values).reshape((1,-1))
