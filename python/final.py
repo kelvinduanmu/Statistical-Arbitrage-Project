@@ -72,7 +72,7 @@ def factor_mimicking_portfolio_cvx(data, exp_factor, neu_factors, covariance, da
         x = np.array(sol['x']).flatten()
         success = sol['status'] == 'optimal'
         if sol['status']=='unknown':
-            sol = solvers.qp(P, q, G, h, A, b, maxiters=1000000)
+            sol = solvers.qp(P, q, G, h, A, b, maxiters=10000)
 
             x = np.array(sol['x']).flatten()
             holdings = pd.Series(x, index=touse[touse].index)
