@@ -65,18 +65,21 @@ def factor_mimicking_portfolio_cvx(data, exp_factor, neu_factors, covariance, da
     success = False
     holdings = None
 
-    msg = 'Can not solve optimization for ' + exp_factor + ' at ' + startDate
+    msg = 'Can not solve optimization for ' + exp_factor + ' at ' + str(date)
     try:
         sol = solvers.qp(P, q, G, h, A, b)
 
         x = np.array(sol['x']).flatten()
         success = sol['status'] == 'optimal'
-        if success:
+        if sol['status']=='unknown':
+            sol = solvers.qp(P, q, G, h, A, b, maxiters=10000)
+
+            x = np.array(sol['x']).flatten()
+            holdings = pd.Series(x, index=touse[touse].index)
+        elif success:
             holdings = pd.Series(x, index=touse[touse].index)
 
     except:
-        print(msg)
-    if holdings is None:
         print(msg)
     return holdings, success
 
@@ -105,7 +108,7 @@ def combine_factors_portfolio_cvx(data, factor_premia, covariance, H_mat, trans_
 
     success = False
     holdings = None
-    msg = 'Can not solve the final optimization at ' + startDate
+    msg = 'Can not solve the final optimization at ' + str(date)
     try:
         sol = solvers.qp(P, q, G, h)
 
@@ -138,13 +141,13 @@ def data_preparation():
         except:
             pass
         if key in ['beta', 'MKshare']:
-            temp = -(df - df.mean()) / df.std()
+            temp = -((df.T - df.mean(axis=1).T) / df.std(axis=1).T).T
             if key == 'beta':
                 cleanData['BAB'] = temp
             else:
                 cleanData[key] = temp
         if key == 'mom':
-            cleanData[key] = (df - df.mean()) / df.std()
+            cleanData[key] = ((df.T - df.mean(axis=1).T) / df.std(axis=1).T).T
 
     return cleanData
 
@@ -191,9 +194,13 @@ gamma=np.arange(1, bigG)*0.1
 gamma_perf=pd.DataFrame(np.ones((len(dates), bigG-1))*np.nan, index=dates, columns=gamma)
 
 time0=time.time()
+curr_year=2005
 for j in gamma:
     for i in range(len(dates)):
-        gamma_perf.loc[dates[i], j]=strategy_simulation(cleanData, dates[i], 25, 0.02, j)
+        gamma_perf.loc[dates[i], j]=strategy_simulation(cleanData, dates[i], 12, 0.02, j)
+        if dates[i].year==curr_year:
+            curr_year+=1
+            print(curr_year)
     print('gamma:, ', j, time.time()-time0)
     time0=time.time()
 #performance.plot(linestyle='None',marker='o')
