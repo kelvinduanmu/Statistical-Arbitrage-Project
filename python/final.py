@@ -201,15 +201,16 @@ dates=dates[:-100]
 
 startP = 1
 endP=11
-multiP = 0.005
+multiP = 0.01
 para=np.arange(startP, endP)*multiP
 para_perf=pd.DataFrame(np.ones((len(dates), endP-startP))*np.nan, index=dates, columns=para)
 
 time0=time.time()
-curr_year=2005
+
 for j in para:
+    curr_year=2005
     for i in range(len(dates)):
-        para_perf.loc[dates[i], j]=strategy_simulation(cleanData, dates[i], 12, j, 1.2)
+        para_perf.loc[dates[i], j]=strategy_simulation(cleanData, dates[i], 12, 0.02, j)
         if dates[i].year==curr_year:
             curr_year+=1
             print(curr_year)
@@ -220,4 +221,5 @@ for j in para:
 
 
 para_perf.to_csv('temp.csv')
-print(((para_perf.mean()).values).reshape((1,-1))
+print(((para_perf.mean()).values).reshape((1,-1)))
+pickle.dump(para_perf, open('gamma2.p','wb'))
