@@ -138,13 +138,13 @@ def data_preparation():
         except:
             pass
         if key in ['beta', 'MKshare']:
-            temp = -(df - df.mean()) / df.std()
+            temp = -((df.T - df.mean(axis=1).T) / df.std(axis=1).T).T
             if key == 'beta':
                 cleanData['BAB'] = temp
             else:
                 cleanData[key] = temp
         if key == 'mom':
-            cleanData[key] = (df - df.mean()) / df.std()
+            cleanData[key] = ((df.T - df.mean(axis=1).T) / df.std(axis=1).T).T
 
     return cleanData
 
