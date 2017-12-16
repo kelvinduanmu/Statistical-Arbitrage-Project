@@ -65,7 +65,7 @@ def factor_mimicking_portfolio_cvx(data, exp_factor, neu_factors, covariance, da
     success = False
     holdings = None
 
-    msg = 'Can not solve optimization for ' + exp_factor + ' at ' + date
+    msg = 'Can not solve optimization for ' + exp_factor + ' at ' + str(date)
     try:
         sol = solvers.qp(P, q, G, h, A, b)
 
@@ -105,7 +105,7 @@ def combine_factors_portfolio_cvx(data, factor_premia, covariance, H_mat, trans_
 
     success = False
     holdings = None
-    msg = 'Can not solve the final optimization at ' + date
+    msg = 'Can not solve the final optimization at ' + str(date)
     try:
         sol = solvers.qp(P, q, G, h)
 
