@@ -4,6 +4,8 @@ import numpy as np
 import os
 from cvxopt import matrix, solvers
 import sklearn.covariance as skl_cov
+import matplotlib.pyplot as plt
+
 
 solvers.options['show_progress'] = False
 
@@ -146,12 +148,12 @@ def data_preparation():
 
     return cleanData
 
-
-def strategy_simulation(cleanData, startDate, holdingPeriod=12, trans_cost_mult=0.02, gamma=0.5):
-
+def strategy_simulation(cleanData, startDate, holdingPeriod, trans_cost_mult, gamma):
+        
     curr_ret_data = cleanData['stock.ret'][:startDate]
     curr_ret_data = curr_ret_data.dropna(how='all')
-    curr_ret_data = curr_ret_data.drop(columns=curr_ret_data.loc[:, curr_ret_data.isnull().any()].columns)
+    curr_ret_data=curr_ret_data.drop(curr_ret_data.loc[:,curr_ret_data.isnull().any()].columns, axis=1)
+
     V = np.cov(curr_ret_data.transpose())
     V = skl_cov.LedoitWolf(store_precision=False, assume_centered=True).fit(V).covariance_
     V = pd.DataFrame(V, index=curr_ret_data.columns, columns=curr_ret_data.columns)
@@ -177,11 +179,27 @@ def strategy_simulation(cleanData, startDate, holdingPeriod=12, trans_cost_mult=
 
 cleanData = data_preparation()
 startDate = '2005-01-07'
-dates = cleanData['stock.ret'].loc[startDate:].index
 
-gamma = np.arange(3, 7) * 0.1
-gamma_perf = pd.DataFrame(np.nan, index=dates, columns=gamma)
-for date in dates:
-    for j in gamma:
-    gamma_perf.loc[date, j] = strategy_simulation(cleanData, date, gamma=j)
-    # import pdb; pdb.set_trace()
+dates=cleanData['stock.ret'].loc[startDate:].index
+dates=dates[:-100]
+performance_means = list()
+
+performance=pd.DataFrame({'PnL':[np.nan]}, index=dates)
+
+ind_start = 0
+for g in (np.arange(1, 11)*0.1):
+    for t in (np.arange(1, 11)*0.005):
+        for h in (np.arange(1, 14)*4):
+            for i in range(len(dates)):
+                try:
+                    performance.loc[dates[i]]=strategy_simulation(cleanData, dates[i], h, t, g)
+                    performance_means[ind_start] = performance.mean()
+                except:
+                    pass
+                ind_start = ind_start + 1
+
+#performance.plot(linestyle='None',marker='o')
+#performance.mean()
+
+
+
