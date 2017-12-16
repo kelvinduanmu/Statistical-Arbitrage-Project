@@ -71,12 +71,15 @@ def factor_mimicking_portfolio_cvx(data, exp_factor, neu_factors, covariance, da
 
         x = np.array(sol['x']).flatten()
         success = sol['status'] == 'optimal'
-        if success:
+        if sol['status']=='unknown':
+            sol = solvers.qp(P, q, G, h, A, b, maxiters=1000000)
+
+            x = np.array(sol['x']).flatten()
+            holdings = pd.Series(x, index=touse[touse].index)
+        elif success:
             holdings = pd.Series(x, index=touse[touse].index)
 
     except:
-        print(msg)
-    if holdings is None:
         print(msg)
     return holdings, success
 
@@ -186,9 +189,13 @@ gamma=np.arange(3, 7)*0.1
 gamma_perf=pd.DataFrame(np.ones((len(dates), 4))*np.nan, index=dates, columns=gamma)
 
 time0=time.time()
+curr_year=2005
 for j in gamma:
     for i in range(len(dates)):
         gamma_perf.loc[dates[i], j]=strategy_simulation(cleanData, dates[i], 12, 0.02, j)
+        if dates[i].year==curr_year:
+            curr_year+=1
+            print(curr_year)
     print('gamma:, ', j, time.time()-time0)
     time0=time.time()
 #performance.plot(linestyle='None',marker='o')
