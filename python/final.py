@@ -149,14 +149,16 @@ def data_preparation():
             df[df == 'NA'] = np.nan
         except:
             pass
-        if key in ['beta', 'MKshare']:
-            temp = -((df.T - df.mean(axis=1).T) / df.std(axis=1).T).T
+        if key in ['beta', 'MKshare', 'mom']:
+            temp = ((df.T - df.mean(axis=1).T) / df.std(axis=1).T).T
+            temp=np.minimum(temp, 3)
+            temp=np.maximum(temp, -3)
             if key == 'beta':
-                cleanData['BAB'] = temp
-            else:
+                cleanData['BAB'] = -temp
+            elif key == 'MKshare':
+                cleanData[key] = -temp
+            elif key == 'mom':
                 cleanData[key] = temp
-        if key == 'mom':
-            cleanData[key] = ((df.T - df.mean(axis=1).T) / df.std(axis=1).T).T
 
     return cleanData
 
@@ -190,7 +192,7 @@ def strategy_simulation(cleanData, startDate, holdingPeriod, trans_cost_mult, ga
 
         transc = (holding_overall**2).sum() * trans_cost_mult
 
-        return PnL[-1] - transc
+        return PnL[-1] - transc*2
 
 
 cleanData = data_preparation()
@@ -206,8 +208,9 @@ para=np.arange(startP, endP)*multiP
 para_perf=pd.DataFrame(np.ones((len(dates), endP-startP))*np.nan, index=dates, columns=para)
 
 time0=time.time()
-curr_year=2005
+
 for j in para:
+    curr_year=2005
     for i in range(len(dates)):
         para_perf.loc[dates[i], j]=strategy_simulation(cleanData, dates[i], 12, j, 1.2)
         if dates[i].year==curr_year:
@@ -220,4 +223,4 @@ for j in para:
 
 
 para_perf.to_csv('temp.csv')
-print(((para_perf.mean()).values).reshape((1,-1))
+print(((para_perf.mean()).values).reshape((1,-1)))
