@@ -106,11 +106,19 @@ def combine_factors_portfolio_cvx(data, factor_premia, covariance, H_mat, trans_
 
     h = matrix(np.zeros(2))
 
+    # and subject to Ax = b
+
+    A = matrix(np.ones((1, 2)))  # exposure to factor b1, b2
+
+    b = matrix(np.ones((1,1)))
+
+
+
     success = False
     holdings = None
     msg = 'Can not solve the final optimization at ' + str(date)
     try:
-        sol = solvers.qp(P, q, G, h)
+        sol = solvers.qp(P, q, G, h, A, b)
 
         x = np.array(sol['x']).flatten()
         success = sol['status'] == 'optimal'
@@ -118,6 +126,7 @@ def combine_factors_portfolio_cvx(data, factor_premia, covariance, H_mat, trans_
             holdings = x
     except:
         print(msg)
+        import pdb; pdb.set_trace()
     if holdings is None:
         print(msg)
     return holdings, success
@@ -198,7 +207,7 @@ for j in gamma:
             print(curr_year)
     print('gamma:, ', j, time.time()-time0)
     time0=time.time()
-#performance.plot(linestyle='None',marker='o')
+# performance.plot(linestyle='None',marker='o')
 #performance.mean()
 
 
